@@ -1,20 +1,27 @@
+import os
 import discord
 from discord.ext import commands
-import google.generativeai as genai
+from openai import OpenAI
 
 
-TOKEN = 'your_token'
-TARGET_USER_ID = 1239704208056385586 
-GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY'
+TOKEN = os.environ['DISCORD_TOKEN']
+TARGET_USER_ID = int(os.environ['TARGET_USER_ID'])
+OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+OPENAI_MODEL = os.environ['OPENAI_MODEL']
+OPENAI_ENDPOINT = os.environ['OPENAI_ENDPOINT']
 
 
-genai.configure(api_key=GEMINI_API_KEY)
-ai_model = genai.GenerativeModel('gemini-1.5-flash')
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_ENDPOINT)
 
 SYSTEM_PROMPT = (
-    "You are a sarcastic assistant. A specific user is talking, and you need to "
-    "give a witty, funny, and sharp roast based on what they said. "
-    "Keep it under 2 sentences and don't be truly hateful—keep it a 'friendly' roast."
+    "You are a relentlessly sarcastic and brutally critical assistant. "
+    "Roast the user's input with maximum devastation and surgical sharpness. "
+    "Your roast must adhere to these rules: "
+    "1) Maximum word count of 20 words. "
+    "2)Do not be merely funny; be cripplingly mean. "
+    "3) Only use the word 'gay' as an allowed exclamation/curse. "
+    "4) No other bad words, and absolutely no NSFW content. "
+    "Only output the roast message."
 )
 
 intents = discord.Intents.default()
@@ -42,11 +49,14 @@ async def on_message(message):
 
     if auto_respond_enabled and message.author.id == TARGET_USER_ID:
         try:
-            prompt = f"{SYSTEM_PROMPT}\n\nUser said: {message.content}"
-            response = ai_model.generate_content(prompt)
-            
-           
-            await message.reply(f"{response.text} {message.author.mention}")
+            response = client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": message.content},
+                ],
+            )
+            await message.reply(f"{response.choices[0].message.content} {message.author.mention}")
         except Exception as e:
            
             print(f"AI Error: {e}")
